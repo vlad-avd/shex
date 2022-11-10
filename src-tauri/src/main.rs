@@ -1,5 +1,9 @@
 use tauri::{AppHandle, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, Wry};
 
+use crate::config::load_config;
+
+mod config;
+
 fn main() {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit");
     let click = CustomMenuItem::new("click".to_string(), "Click here");
@@ -20,7 +24,10 @@ fn handle_tray_event(app: &AppHandle<Wry>, event: SystemTrayEvent) {
         SystemTrayEvent::MenuItemClick { id, .. } => {
             match id.as_str() {
                 "quit" => app.exit(0),
-                item => {println!("Clicked on: {item}")}
+                item => {
+                    println!("Clicked on: {item}");
+                    load_config();
+                }
             }
         }
         _ => {}
