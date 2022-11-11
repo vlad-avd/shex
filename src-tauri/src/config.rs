@@ -1,11 +1,23 @@
+use std::env::{var, VarError};
+use std::{fs, process};
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
-use crate::config::Executable::Script;
+use serde_json::json;
+
+use crate::config::Executable::{Command, Script};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
     items: Vec<ShexMenuItem>,
+}
+
+impl Config {
+    pub fn new() -> Self {
+        Self { items: Vec::<ShexMenuItem>::new() }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -14,18 +26,6 @@ pub struct ShexMenuItem {
     daemon: bool,
     executable: Executable,
     child_items: Vec<Box<ShexMenuItem>>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-enum Executable {
-    Command {body: String},
-    Script {path: String},
-}
-
-impl Default for Executable {
-    fn default() -> Self {
-        Script {path: String::new()}
-    }
 }
 
 impl ShexMenuItem {
@@ -43,14 +43,69 @@ impl ShexMenuItem {
     }
 }
 
-pub fn load_config() {
-    let mut config: Config = confy::load("shex", None).unwrap();
-    config.items.push(ShexMenuItem{
-        title: String::from("echo"),
-        daemon: false,
-        executable: Default::default(),
-        child_items: vec![]
-    });
-    confy::store("shex", None, config);
-    println!("{:#?}", confy::get_configuration_file_path("shex", None).unwrap());
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum Executable {
+    Command {body: String},
+    Script {path: String},
+}
+
+impl Default for Executable {
+    fn default() -> Self {
+        Script {path: String::new()}
+    }
+}
+
+pub fn load_config() -> Config {
+    let configs_dir = var("XDG_CONFIG_HOME")
+        .or_else(|_| var("HOME").map(|home| format!("{home}/.config")))
+        .unwrap();
+
+    let config_path = format!("{configs_dir}/shex");
+    fs::create_dir_all(&config_path).unwrap();
+
+    let path = format!("{config_path}/scripts_config.json");
+    let config = Path::new(&path);
+    if !config.exists() {
+        match File::create(config) {
+            Ok(file) => {serde_json::to_writer_pretty(&file, &get_demo_config());},
+            Err(_) => println!("Ooops")
+        }
+    }
+
+    let config = match fs::read_to_string(&config) {
+        Ok(data) => data,
+        //TODO: create a file and fill
+        Err(_) => String::new(),
+    };
+
+    let mut proc = process::Command::new("/usr/bin/gnome-terminal")
+        .arg("--")
+        .arg("sh")
+        .arg("-c")
+        .arg("echo test; exec bash")
+        .spawn()
+        .unwrap();
+    // let output = proc.wait_with_output();;
+    // println!("output = {:?}", output);
+
+    match serde_json::from_str::<Config>(&config) {
+        Ok(config) => config,
+        Err(_) => Config::new(),
+    }
+
+}
+
+fn get_demo_config() -> Config {
+    Config {
+        items: vec![
+            ShexMenuItem {
+                title: "echo".to_string(),
+                daemon: false,
+                executable: Command {
+                    body: String::from("echo $HOME")
+                },
+                child_items: vec![]
+            }]
+    }
 }

@@ -1,3 +1,5 @@
+extern crate core;
+
 use tauri::{AppHandle, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, Wry};
 
 use crate::config::load_config;
@@ -26,7 +28,7 @@ fn handle_tray_event(app: &AppHandle<Wry>, event: SystemTrayEvent) {
                 "quit" => app.exit(0),
                 item => {
                     println!("Clicked on: {item}");
-                    load_config();
+                    println!("{:?}", load_config());
                 }
             }
         }
