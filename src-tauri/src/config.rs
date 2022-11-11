@@ -1,5 +1,5 @@
-use std::env::{var, VarError};
 use std::{fs, process};
+use std::env::{var, VarError};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -11,28 +11,28 @@ use crate::config::Executable::{Command, Script};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
-    items: Vec<ShexMenuItem>,
+    pub items: Vec<Box<ShexMenuItem>>,
 }
 
 impl Config {
     pub fn new() -> Self {
-        Self { items: Vec::<ShexMenuItem>::new() }
+        Self { items: Vec::<Box<ShexMenuItem>>::new() }
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ShexMenuItem {
-    title: String,
+    pub title: String,
     daemon: bool,
-    executable: Executable,
-    child_items: Vec<Box<ShexMenuItem>>,
+    pub executable: Executable,
+    pub child_items: Vec<Box<ShexMenuItem>>,
 }
 
 impl ShexMenuItem {
     pub fn new() -> ShexMenuItem {
         ShexMenuItem {
             title: String::new(),
-            executable: Executable::Command {body: String::new()},
+            executable: Command {body: String::new()},
             daemon: false,
             child_items: Vec::<Box<ShexMenuItem>>::new(),
         }
@@ -40,6 +40,10 @@ impl ShexMenuItem {
 
     pub fn is_daemon(&self) -> bool {
         self.daemon
+    }
+
+    pub fn has_submenu(&self) -> bool {
+        !self.child_items.is_empty()
     }
 }
 
@@ -99,13 +103,32 @@ pub fn load_config() -> Config {
 fn get_demo_config() -> Config {
     Config {
         items: vec![
-            ShexMenuItem {
-                title: "echo".to_string(),
-                daemon: false,
-                executable: Command {
-                    body: String::from("echo $HOME")
+            Box::new(
+                ShexMenuItem {
+                    title: "echo".to_string(),
+                    daemon: false,
+                    executable: Command {
+                        body: String::from("echo $HOME")
+                    },
+                    child_items: vec![]
                 },
-                child_items: vec![]
-            }]
+            )
+        ]
     }
+}
+
+// now id is the title field
+pub fn find_item<'a>(items: &'a Vec<Box<ShexMenuItem>>, id: &'a String) -> Option<&'a Box<ShexMenuItem>> {
+    let mut result = None;
+    for item in items {
+        if item.has_submenu() {
+            result = find_item(&item.child_items, id);
+        } else {
+            if id.eq(&item.title) {
+                let a = item;
+                return Some(a);
+            }
+        }
+    }
+    result
 }
