@@ -2,6 +2,7 @@ use std::{fs, process};
 use std::env::{var, VarError};
 use std::fs::File;
 use std::io::Read;
+use std::ops::Deref;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -50,8 +51,14 @@ impl ShexMenuItem {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Executable {
-    Command {body: String},
-    Script {path: String},
+    Command { body: String },
+    Script { path: String },
+}
+
+impl Executable {
+    pub fn command_body(&self) {
+
+    }
 }
 
 impl Default for Executable {
@@ -83,16 +90,6 @@ pub fn load_config() -> Config {
         Err(_) => String::new(),
     };
 
-    let mut proc = process::Command::new("/usr/bin/gnome-terminal")
-        .arg("--")
-        .arg("sh")
-        .arg("-c")
-        .arg("echo test; exec bash")
-        .spawn()
-        .unwrap();
-    // let output = proc.wait_with_output();;
-    // println!("output = {:?}", output);
-
     match serde_json::from_str::<Config>(&config) {
         Ok(config) => config,
         Err(_) => Config::new(),
@@ -118,7 +115,7 @@ fn get_demo_config() -> Config {
 }
 
 // now id is the title field
-pub fn find_item<'a>(items: &'a Vec<Box<ShexMenuItem>>, id: &'a String) -> Option<&'a Box<ShexMenuItem>> {
+pub fn find_item<'a>(items: &'a Vec<Box<ShexMenuItem>>, id: & String) -> Option<&'a Box<ShexMenuItem>> {
     let mut result = None;
     for item in items {
         if item.has_submenu() {

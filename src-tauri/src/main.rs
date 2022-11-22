@@ -1,8 +1,11 @@
 extern crate core;
 
+use std::fmt::format;
+use std::process;
+
 use tauri::{AppHandle, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem, SystemTraySubmenu, Wry};
 
-use crate::config::{find_item, load_config, ShexMenuItem};
+use crate::config::{Executable, find_item, load_config, ShexMenuItem};
 
 mod config;
 
@@ -30,13 +33,49 @@ fn handle_tray_event(app: &AppHandle<Wry>, event: SystemTrayEvent) {
             match id.as_str() {
                 "quit" => app.exit(0),
                 item => {
+                    // TODO: store config to context
+                    let config = &load_config().items;
                     // TODO: find executable in config
                     // TODO: run executable
-                    println!("{:?}", find_item(&load_config().items, &id));
+                    if let Some(item) = find_item(config, &id) {
+                        run_executable(item)
+                    }
+                    // println!("{:?}", find_item(&load_config().items, &id));
                 }
             }
         }
         _ => {}
+    }
+}
+
+fn run_executable(item: &Box<ShexMenuItem>) {
+
+    match item.executable {
+        Executable::Command { ref body } => {
+            run(&item, &body);
+        }
+        Executable::Script { ref path } => {
+            run(&item, &path);
+        }
+    }
+}
+
+fn run(item: &ShexMenuItem, str: &str) {
+    match item.is_daemon() {
+        true => {
+            process::Command::new(str)
+                .spawn()
+                .unwrap();
+        }
+        false => {
+            process::Command::new("/usr/bin/gnome-terminal")
+                .arg("--")
+                .arg("bash")
+                .arg("-c")
+                .arg(format!("{}; exec bash", str))
+                .spawn()
+                .unwrap();
+        }
     }
 }
 
