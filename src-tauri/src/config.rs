@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -7,7 +9,9 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Self {
-        Self { items: Vec::<Box<ShexMenuItem>>::new() }
+        Self {
+            items: Vec::<Box<ShexMenuItem>>::new()
+        }
     }
 }
 
@@ -23,7 +27,9 @@ impl ShexMenuItem {
     pub fn new() -> ShexMenuItem {
         ShexMenuItem {
             title: String::new(),
-            executable: Executable::Command {body: String::new()},
+            executable: Executable::Command {
+                body: String::new()
+            },
             daemon: false,
             child_items: Vec::<Box<ShexMenuItem>>::new(),
         }
@@ -41,12 +47,27 @@ impl ShexMenuItem {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Executable {
-    Command { body: String },
-    Script { path: String },
+    Command {
+        body: String
+    },
+    Script {
+        path: String
+    },
 }
 
 impl Default for Executable {
     fn default() -> Self {
-        Executable::Script {path: String::new()}
+        Executable::Command {
+            body: String::new()
+        }
+    }
+}
+
+impl Display for Executable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Executable::Command {body} => write!(f, "{body}"),
+            Executable::Script {path} => write!(f, "{path}"),
+        }
     }
 }
