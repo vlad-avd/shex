@@ -4,7 +4,7 @@ use std::fs::File;
 use std::path::Path;
 use std::process::Child;
 
-use tauri::{AppHandle, CustomMenuItem, Manager, SystemTrayEvent, SystemTrayMenu, SystemTraySubmenu, Wry};
+use tauri::{AppHandle, CustomMenuItem, SystemTrayEvent, SystemTrayMenu, SystemTraySubmenu, Wry};
 
 use crate::config::{Config, Executable, ShexMenuItem};
 
@@ -15,13 +15,13 @@ pub fn load_config() -> Config {
         .or_else(|_| var("HOME").map(|home| format!("{home}/.config")))
         .expect("Unable to determine path to 'config' directory");
 
-    let config_path = format!("{configs_dir}/shex");
+    let app_config_dir = format!("{configs_dir}/shex");
 
-    fs::create_dir_all(&config_path)
+    fs::create_dir_all(&app_config_dir)
         .expect(format!("Unable to create config dir by path: {config_path}").as_str());
 
-    let path = format!("{config_path}/scripts_config.json");
-    let config = Path::new(&path);
+    let config_path = format!("{config_path}/scripts_config.json");
+    let config = Path::new(&config_path);
 
     if !config.exists() {
         match File::create(config) {
@@ -56,7 +56,7 @@ fn build_demo_config() -> Config {
             Box::new(
                 ShexMenuItem {
                     title: String::from("submenu"),
-                    daemon: false,
+                    background: false,
                     executable: Executable::Command {
                         body: "".to_string()
                     },
@@ -64,7 +64,7 @@ fn build_demo_config() -> Config {
                         Box::new(
                             ShexMenuItem {
                                 title: String::from("echo submenu"),
-                                daemon: false,
+                                background: false,
                                 executable: Executable::Command {
                                     body: String::from("echo FROM SUBMENU")
                                 },
@@ -74,7 +74,7 @@ fn build_demo_config() -> Config {
                         Box::new(
                             ShexMenuItem {
                                 title: String::from("ls user"),
-                                daemon: false,
+                                background: false,
                                 executable: Executable::Command {
                                     body: String::from("ls ~")
                                 },
@@ -87,7 +87,7 @@ fn build_demo_config() -> Config {
             Box::new(
                 ShexMenuItem {
                     title: String::from("echo HOME"),
-                    daemon: false,
+                    background: false,
                     executable: Executable::Command {
                         body: String::from("echo $HOME")
                     },
@@ -98,24 +98,25 @@ fn build_demo_config() -> Config {
     }
 }
 
-pub fn handle_tray_event(app: &AppHandle<Wry>, event: SystemTrayEvent) {
-    //TODO: when click on menu -> load and update config in context
-    // app.get_window().unwrap().
-    match event {
-        SystemTrayEvent::MenuItemClick { id, .. } => {
-            match id.as_str() {
-                "quit" => app.exit(0),
-                _item => {
-                    // TODO: store config to context
-                    let config = &load_config().items;
-                    if let Some(item) = find_item(config, &id) {
-                        handle_item_click(item)
+pub fn get_event_handler()
+    -> Box<dyn Fn(&AppHandle<Wry>, SystemTrayEvent) + Send + Sync + 'static> {
+    // could be improved: load config only in main send here as arg
+    let config = load_config().items;
+    Box::new(move |app, event| -> () {
+        match event {
+            SystemTrayEvent::MenuItemClick { id, .. } => {
+                match id.as_str() {
+                    "quit" => app.exit(0),
+                    _item => {
+                        if let Some(item) = find_item(&config, &id) {
+                            handle_item_click(item)
+                        }
                     }
                 }
             }
+            _ => {}
         }
-        _ => {}
-    }
+    })
 }
 
 // for now id is the title field
@@ -126,8 +127,7 @@ pub fn find_item<'a>(items: &'a Vec<Box<ShexMenuItem>>, id: & String) -> Option<
             result = find_item(&item.child_items, id);
         } else {
             if id.eq(&item.title) {
-                let a = item;
-                return Some(a);
+                return Some(&item);
             }
         }
     }
@@ -166,17 +166,14 @@ pub fn handle_item_click(item: &Box<ShexMenuItem>) {
 }
 
 fn run_executable(item: &ShexMenuItem, script: &str) -> io::Result<Child> {
-    match item.is_daemon() {
+    match item.is_background() {
         true => {
             process::Command::new(script)
                 .spawn()
         }
         false => {
             process::Command::new("/usr/bin/gnome-terminal")
-                .arg("--")
-                .arg("sh")
-                .arg("-c")
-                .arg(format!("{}; exec bash", script))
+                .args(["--", "sh", "-c", format!("{}; exec bash", script).as_str()])
                 .spawn()
         }
     }

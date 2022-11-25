@@ -18,7 +18,7 @@ impl Config {
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ShexMenuItem {
     pub title: String,
-    pub(crate) daemon: bool,
+    pub(crate) background: bool,
     pub executable: Executable,
     pub child_items: Vec<Box<ShexMenuItem>>,
 }
@@ -30,13 +30,13 @@ impl ShexMenuItem {
             executable: Executable::Command {
                 body: String::new()
             },
-            daemon: false,
+            background: false,
             child_items: Vec::<Box<ShexMenuItem>>::new(),
         }
     }
 
-    pub fn is_daemon(&self) -> bool {
-        self.daemon
+    pub fn is_background(&self) -> bool {
+        self.background
     }
 
     pub fn has_submenu(&self) -> bool {
