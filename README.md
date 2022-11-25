@@ -28,8 +28,6 @@ Next, customize config for yourself. It contains array of next fields:
  - *executable*: describes type of executable (*command + body* or *script + path*)
  - *child_items*: array for submenu configuration.
 
-You can configure service for app autostart when os start up:
-!TODO
+Move binary to ```/bin``` using ```sudo cp <path_to_shex>/src-tauri/target/release/shex /bin```
 
-For restarting app on the fly when config file changed, follow next steps:
-!TODO
+Launch app via: ```nohup shex```

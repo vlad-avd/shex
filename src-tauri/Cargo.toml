@@ -5,7 +5,7 @@ description = "System tray app for running preconfigured sh commands and scripts
 authors = ["Vladyslav Avdiienko"]
 license = ""
 repository = ""
-edition = "2022"
+edition = "2021"
 rust-version = "1.57"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
