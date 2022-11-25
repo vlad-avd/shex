@@ -18,25 +18,25 @@ pub fn load_config() -> Config {
     let app_config_dir = format!("{configs_dir}/shex");
 
     fs::create_dir_all(&app_config_dir)
-        .expect(format!("Unable to create config dir by path: {config_path}").as_str());
+        .expect(format!("Unable to create config dir by path: {app_config_dir}").as_str());
 
-    let config_path = format!("{config_path}/scripts_config.json");
+    let config_path = format!("{app_config_dir}/scripts_config.json");
     let config = Path::new(&config_path);
 
     if !config.exists() {
         match File::create(config) {
             Ok(file) => {
                 serde_json::to_writer_pretty(&file, &build_demo_config())
-                    .expect(format!("Failed to init config file by path: {path}").as_str());
+                    .expect(format!("Failed to init config file by path: {config_path}").as_str());
             },
-            Err(_) => panic!("Failed to create config file by path: {path}")
+            Err(_) => panic!("Failed to create config file by path: {config_path}")
         }
     }
 
     let config = match fs::read_to_string(&config) {
         Ok(data) => data,
         Err(_) => {
-            eprintln!("Error while reading config file by path: {path}");
+            eprintln!("Error while reading config file by path: {config_path}");
             return Config::new()
         },
     };
@@ -44,7 +44,7 @@ pub fn load_config() -> Config {
     match serde_json::from_str::<Config>(&config) {
         Ok(config) => config,
         Err(_) => {
-            eprintln!("Error while parsing config file by path: {path}");
+            eprintln!("Error while parsing config file by path: {config_path}");
             Config::new()
         },
     }
